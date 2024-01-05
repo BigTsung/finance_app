@@ -7,12 +7,24 @@ from PyQt5.QtGui import QPainter, QFont
 from datetime import datetime
 from PyQt5.QtCore import Qt, QDateTime, QDate
 
+import urllib.request
+
 class StockApp(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
 
     def initUI(self):
+
+        self.networkStatusLabel = QLabel(self)
+        self.networkStatusLabel.setFixedSize(20, 20)  # 設置燈號的大小
+        self.networkStatusLabel.setStyleSheet(
+            "QLabel { background-color: red; border-radius: 10px; }"  # 初始設為紅色圓形
+        )
+        self.networkStatusLabel.setAlignment(Qt.AlignRight | Qt.AlignTop)
+
+
+
         self.stockInput = QLineEdit(self)
         self.fetchButton = QPushButton('獲取股票資訊', self)
         self.fetchButton.clicked.connect(self.updateChart)
@@ -69,6 +81,9 @@ class StockApp(QWidget):
 
 
         layoutMain = QVBoxLayout()
+
+        layoutMain = QVBoxLayout(self)
+        layoutMain.addWidget(self.networkStatusLabel, 0, Qt.AlignRight | Qt.AlignTop)
         
         self.addTitleLable(layoutMain,'輸入代號',16,True)
         # self.addLine(layoutMain)
@@ -167,6 +182,17 @@ class StockApp(QWidget):
         font.setBold(Bold)     # 設置加粗
         titleLabel.setFont(font)
         layout.addWidget(titleLabel)
+
+    def updateNetworkStatus(self, isConnected):
+        if isConnected:
+            self.networkStatusLabel.setStyleSheet(
+                "QLabel { background-color: green; border-radius: 10px; }"
+            )
+        else:
+            self.networkStatusLabel.setStyleSheet(
+                "QLabel { background-color: red; border-radius: 10px; }"
+            )
+
 
     def updateBestBuyLabels(self):
 
@@ -307,8 +333,18 @@ class StockApp(QWidget):
         #     self.yesterdayInfoLabel.setText(f'昨日開盤價: {self.stock.open[-1]}\n昨日最高價: {self.stock.high[-1]}\n昨日最低價: {self.stock.low[-1]}\n昨日收盤價: {self.stock.price[-1]}')
 
 
+def checkInternetConnection():
+    try:
+        # 嘗試訪問 Google
+        urllib.request.urlopen('http://www.google.com', timeout=2)
+        return True
+    except urllib.error.URLError:
+        return False
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = StockApp()
     ex.show()
+    isConnected = checkInternetConnection()
+    ex.updateNetworkStatus(isConnected)
     sys.exit(app.exec_())
