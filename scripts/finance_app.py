@@ -80,37 +80,38 @@ class StockApp(QWidget):
         # self.bestSellLabel4.setVisible(False)
 
 
-        layoutMain = QVBoxLayout()
-
-        layoutMain = QVBoxLayout(self)
-        layoutMain.addWidget(self.networkStatusLabel, 0, Qt.AlignRight | Qt.AlignTop)
+        layoutMain = QHBoxLayout(self)
         
-        self.addTitleLable(layoutMain,'輸入代號',16,True)
-        # self.addLine(layoutMain)
-        layoutMain.addWidget(self.stockInput)
+        
+        layoutMainData = QVBoxLayout(self)
+
+        self.addTitleLable(layoutMainData,'輸入代號',16,True)
+        layoutSetting = QHBoxLayout()
+        layoutSetting.addWidget(self.stockInput)
+        layoutSetting.addWidget(self.fetchButton)
+        layoutMainData.addLayout(layoutSetting)
         
         # setting layout
-        layoutSetting = QHBoxLayout()
-        layoutSetting.addWidget(self.startDateEdit)
-        layoutSetting.addWidget(self.fetchButton)
-        layoutMain.addLayout(layoutSetting)
+        layoutMainData.addWidget(self.startDateEdit)
+       
+       
 
         # realtime layout
-        self.addTitleLable(layoutMain,'即時資訊',16,True)
+        self.addTitleLable(layoutMainData,'即時資訊',16,True)
         
         line = QFrame(self)
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
-        layoutMain.addWidget(line)
+        layoutMainData.addWidget(line)
         layoutTextInfo = QHBoxLayout()
         layoutTextInfo.addWidget(self.realTimeInfoLabel)
-        layoutMain.addLayout(layoutTextInfo)
+        layoutMainData.addLayout(layoutTextInfo)
 
         # layoutMain.addSpacing(10)
 
         # stock layout
-        self.addTitleLable(layoutMain,'股票資訊',16,True)
-        self.addLine(layoutMain)
+        self.addTitleLable(layoutMainData,'股票資訊',16,True)
+        self.addLine(layoutMainData)
         
         layoutStockMain = QHBoxLayout()
 
@@ -149,14 +150,23 @@ class StockApp(QWidget):
         layoutStockMain.addLayout(self.layoutStockBest)
         self.setLayoutVisible(self.layoutStockBest, False)
 
-        layoutMain.addLayout(layoutStockMain)
+        layoutMainData.addLayout(layoutStockMain)
 
-        layoutMain.addSpacing(10)
+        layoutMainData.addSpacing(10)
+
+        layoutMain.addLayout(layoutMainData)
         
         # chart layout
-        self.addTitleLable(layoutMain,'股價走勢圖',16,True)
-        self.addLine(layoutMain)
-        layoutMain.addWidget(self.chartView)
+        layoutMainChart = QVBoxLayout(self)
+        self.addTitleLable(layoutMainChart,'股價走勢圖',16,True)
+        self.addLine(layoutMainChart)
+        layoutMainChart.addWidget(self.chartView)
+
+        layoutMain.addLayout(layoutMainChart)
+
+
+        layoutMain.addWidget(self.networkStatusLabel, 0, Qt.AlignRight | Qt.AlignTop)
+
         
         self.setLayout(layoutMain)
         
@@ -194,20 +204,9 @@ class StockApp(QWidget):
             )
 
 
-    def updateBestBuyLabels(self):
+    def updateBestLabels(self):
 
         bfp = BestFourPoint(self.stock)
-
-        # print(bfp.best_buy_1())
-        # print(bfp.best_buy_2())
-        # print(bfp.best_buy_3())
-        # print(bfp.best_buy_4())
-
-        # print(bfp.best_sell_1())
-        # print(bfp.best_sell_2())
-        # print(bfp.best_sell_3())
-        # print(bfp.best_sell_4())
-
 
         self.updateLabel(self.bestBuyLabel1, bfp.best_buy_1())
         self.updateLabel(self.bestBuyLabel2, bfp.best_buy_2())
@@ -245,7 +244,7 @@ class StockApp(QWidget):
         self.setLayoutVisible(self.layoutStockRight, True)
         self.setLayoutVisible(self.layoutStockBest, True)
 
-        self.updateBestBuyLabels()
+        self.updateBestLabels()
 
     def showStockChart(self, historical_data, stock_code):
         series = QLineSeries()
