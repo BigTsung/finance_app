@@ -1,5 +1,6 @@
 import sys
 import twstock
+from twstock import BestFourPoint
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QMainWindow, QDateEdit, QFrame
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QDateTimeAxis, QValueAxis
 from PyQt5.QtGui import QPainter, QFont
@@ -48,9 +49,28 @@ class StockApp(QWidget):
         self.averagePriceLabel = QLabel('成交均價: -', self)
 
 
+        self.bestBuyLabel1 = QLabel('量大收紅', self)
+        self.bestBuyLabel2 = QLabel('量縮價不跌', self)
+        self.bestBuyLabel3 = QLabel('三日均價由下往上', self)
+        self.bestBuyLabel4 = QLabel('三日均價大於六日均價', self)
+        # self.bestBuyLabel1.setVisible(False)
+        # self.bestBuyLabel2.setVisible(False)
+        # self.bestBuyLabel3.setVisible(False)
+        # self.bestBuyLabel4.setVisible(False)
+
+        self.bestSellLabel1 = QLabel('量大收黑', self)
+        self.bestSellLabel2 = QLabel('量縮價跌', self)
+        self.bestSellLabel3 = QLabel('三日均價由上往下', self)
+        self.bestSellLabel4 = QLabel('三日均價小於六日均價', self)
+        # self.bestSellLabel1.setVisible(False)
+        # self.bestSellLabel2.setVisible(False)
+        # self.bestSellLabel3.setVisible(False)
+        # self.bestSellLabel4.setVisible(False)
+
+
         layoutMain = QVBoxLayout()
         
-        self.addTitleLable(layoutMain,'輸入',16,True)
+        self.addTitleLable(layoutMain,'輸入代號',16,True)
         # self.addLine(layoutMain)
         layoutMain.addWidget(self.stockInput)
         
@@ -71,7 +91,7 @@ class StockApp(QWidget):
         layoutTextInfo.addWidget(self.realTimeInfoLabel)
         layoutMain.addLayout(layoutTextInfo)
 
-        layoutMain.addSpacing(10)
+        # layoutMain.addSpacing(10)
 
         # stock layout
         self.addTitleLable(layoutMain,'股票資訊',16,True)
@@ -79,24 +99,41 @@ class StockApp(QWidget):
         
         layoutStockMain = QHBoxLayout()
 
-        layoutStockLeft = QVBoxLayout()
-        layoutStockLeft.addWidget(self.priceLabel)
-        layoutStockLeft.addWidget(self.yesterdayCloseLabel)
-        layoutStockLeft.addWidget(self.changePriceLabel)
-        layoutStockLeft.addWidget(self.changePercentLabel)
-        layoutStockLeft.addWidget(self.amplitudeLabel)
-        layoutStockLeft.addWidget(self.openPriceLabel)
-        layoutStockLeft.addWidget(self.highPriceLabel)
-        layoutStockLeft.addWidget(self.lowPriceLabel)
-        layoutStockMain.addLayout(layoutStockLeft)
+        self.layoutStockLeft = QVBoxLayout()
+        self.layoutStockLeft.addWidget(self.priceLabel)
+        self.layoutStockLeft.addWidget(self.yesterdayCloseLabel)
+        self.layoutStockLeft.addWidget(self.changePriceLabel)
+        self.layoutStockLeft.addWidget(self.changePercentLabel)
+        self.layoutStockLeft.addWidget(self.amplitudeLabel)
+        self.layoutStockLeft.addWidget(self.openPriceLabel)
+        self.layoutStockLeft.addWidget(self.highPriceLabel)
+        self.layoutStockLeft.addWidget(self.lowPriceLabel)
+        layoutStockMain.addLayout(self.layoutStockLeft)
+        self.setLayoutVisible(self.layoutStockLeft, False)
 
-        layoutStockRight = QVBoxLayout()
-        layoutStockRight.addWidget(self.volumeLabel)
-        layoutStockRight.addWidget(self.amountLabel)
-        layoutStockRight.addWidget(self.transactionCountLabel)
-        layoutStockRight.addWidget(self.averageVolumeLabel)
-        layoutStockRight.addWidget(self.averagePriceLabel)
-        layoutStockMain.addLayout(layoutStockRight)
+        self.layoutStockRight = QVBoxLayout()
+        self.layoutStockRight.addWidget(self.volumeLabel)
+        self.layoutStockRight.addWidget(self.amountLabel)
+        self.layoutStockRight.addWidget(self.transactionCountLabel)
+        self.layoutStockRight.addWidget(self.averageVolumeLabel)
+        self.layoutStockRight.addWidget(self.averagePriceLabel)
+        layoutStockMain.addLayout(self.layoutStockRight)
+        # layoutMain.addLayout(layoutStockMain)
+        self.setLayoutVisible(self.layoutStockRight, False)
+
+
+        self.layoutStockBest = QVBoxLayout()
+        self.layoutStockBest.addWidget(self.bestBuyLabel1)
+        self.layoutStockBest.addWidget(self.bestBuyLabel2)
+        self.layoutStockBest.addWidget(self.bestBuyLabel3)
+        self.layoutStockBest.addWidget(self.bestBuyLabel4)
+        self.layoutStockBest.addWidget(self.bestSellLabel1)
+        self.layoutStockBest.addWidget(self.bestSellLabel2)
+        self.layoutStockBest.addWidget(self.bestSellLabel3)
+        self.layoutStockBest.addWidget(self.bestSellLabel4)
+        layoutStockMain.addLayout(self.layoutStockBest)
+        self.setLayoutVisible(self.layoutStockBest, False)
+
         layoutMain.addLayout(layoutStockMain)
 
         layoutMain.addSpacing(10)
@@ -110,6 +147,12 @@ class StockApp(QWidget):
         
         self.setWindowTitle('股票資訊查詢')
         self.setGeometry(300, 300, 600, 100)
+
+    def setLayoutVisible(self, layout, visible):
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if widget is not None:
+                widget.setVisible(visible)
 
     def addLine(self, layout):
         line = QFrame(self)
@@ -125,6 +168,38 @@ class StockApp(QWidget):
         titleLabel.setFont(font)
         layout.addWidget(titleLabel)
 
+    def updateBestBuyLabels(self):
+
+        bfp = BestFourPoint(self.stock)
+
+        # print(bfp.best_buy_1())
+        # print(bfp.best_buy_2())
+        # print(bfp.best_buy_3())
+        # print(bfp.best_buy_4())
+
+        # print(bfp.best_sell_1())
+        # print(bfp.best_sell_2())
+        # print(bfp.best_sell_3())
+        # print(bfp.best_sell_4())
+
+
+        self.updateLabel(self.bestBuyLabel1, bfp.best_buy_1())
+        self.updateLabel(self.bestBuyLabel2, bfp.best_buy_2())
+        self.updateLabel(self.bestBuyLabel3, bfp.best_buy_3())
+        self.updateLabel(self.bestBuyLabel4, bfp.best_buy_4())
+
+        self.updateLabel(self.bestSellLabel1, bfp.best_sell_1())
+        self.updateLabel(self.bestSellLabel2, bfp.best_sell_2())
+        self.updateLabel(self.bestSellLabel3, bfp.best_sell_3())
+        self.updateLabel(self.bestSellLabel4, bfp.best_sell_4())
+
+    def updateLabel(self, label, value):
+        if value:
+            label.setStyleSheet("QLabel { background-color : green; color : white; }")
+        else:
+            label.setStyleSheet("QLabel { background-color : gray; color : white; }")
+
+
     def updateChart(self):
         stock_code = self.stockInput.text()
         if not stock_code:
@@ -138,6 +213,13 @@ class StockApp(QWidget):
         self.showStockChart(historical_data, stock_code)
         self.chartView.setVisible(True)
         self.fetchRealTimeStockInfo()
+
+
+        self.setLayoutVisible(self.layoutStockLeft, True)
+        self.setLayoutVisible(self.layoutStockRight, True)
+        self.setLayoutVisible(self.layoutStockBest, True)
+
+        self.updateBestBuyLabels()
 
     def showStockChart(self, historical_data, stock_code):
         series = QLineSeries()
@@ -188,24 +270,6 @@ class StockApp(QWidget):
         self.showYesterdayInfo()
 
     def showYesterdayInfo(self):
-        print("stock: ", self.stock)
-
-        # self.priceLabel = QLabel('成交價: -', self)
-        # self.yesterdayCloseLabel = QLabel('昨收: -', self)
-        # self.changePriceLabel = QLabel('漲跌價: -', self)
-        # self.changePercentLabel = QLabel('漲跌幅: -', self)
-        # self.amplitudeLabel = QLabel('振幅: -', self)
-        # self.openPriceLabel = QLabel('開盤: -', self)
-        # self.highPriceLabel = QLabel('最高: -', self)
-        # self.lowPriceLabel = QLabel('最低: -')
-
-        # self.volumeLabel = QLabel('成交張數: -', self)
-        # self.amountLabel = QLabel('成交金額: -', self)
-        # self.transactionCountLabel = QLabel('成交筆數: -', self)
-        # self.averageVolumeLabel = QLabel('成交均張: -', self)
-        # self.averagePriceLabel = QLabel('成交均價: -', self)
-
-
 
         self.priceLabel.setText(f'成交價: {self.stock.price[-1]}')
         self.yesterdayCloseLabel.setText(f'昨收: {self.stock.close[-1]}')
@@ -233,11 +297,7 @@ class StockApp(QWidget):
         self.amountLabel.setText(f'成交金額: {self.stock.turnover[-1]}')
         self.transactionCountLabel.setText(f'成交筆數: {self.stock.transaction[-1]}')
 
-        # avg_trade_volume = self.stock.moving_average(self.stock.moving_volume, 5)
-
         self.averageVolumeLabel.setText(f'成交均張: {(self.stock.capacity[-1]/1000/self.stock.transaction[-1]):.1f}張/筆')
-
-        # average_price = self.stock.price[-5:].mean()
 
         self.averagePriceLabel.setText(f'成交均價: {(self.stock.turnover[-1]/self.stock.capacity[-1]):.1f}元')
         
