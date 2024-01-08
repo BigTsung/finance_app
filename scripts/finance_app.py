@@ -1,5 +1,8 @@
 import sys
 import twstock
+import pandas as pd
+import urllib.request
+
 from twstock import BestFourPoint
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QMainWindow, QDateEdit, QFrame
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QDateTimeAxis, QValueAxis
@@ -7,7 +10,6 @@ from PyQt5.QtGui import QPainter, QFont
 from datetime import datetime
 from PyQt5.QtCore import Qt, QDateTime, QDate
 
-import urllib.request
 
 class StockApp(QWidget):
     def __init__(self):
@@ -15,9 +17,6 @@ class StockApp(QWidget):
         self.initUI()
 
     def initUI(self):
-
-        
-       
 
         # layout init
         layoutMain = QHBoxLayout(self)
@@ -106,6 +105,9 @@ class StockApp(QWidget):
         self.averageVolumeLabel = QLabel('成交均張: -', self)
         self.averagePriceLabel = QLabel('成交均價: -', self)
 
+        self.kValueLabel = QLabel('K值: -', self)
+        self.dValueLabel = QLabel('D值: -', self)
+
 
         self.bestBuyLabel1 = QLabel('量大收紅', self)
         self.bestBuyLabel2 = QLabel('量縮價不跌', self)
@@ -147,6 +149,8 @@ class StockApp(QWidget):
         layoutStockRight.addWidget(self.transactionCountLabel)
         layoutStockRight.addWidget(self.averageVolumeLabel)
         layoutStockRight.addWidget(self.averagePriceLabel)
+        layoutStockRight.addWidget(self.kValueLabel)
+        layoutStockRight.addWidget(self.dValueLabel)
         layoutH.addLayout(layoutStockRight)
 
         # add stock info
@@ -250,20 +254,42 @@ class StockApp(QWidget):
         stock_code = self.stockInput.text()
         if not stock_code:
             self.infoLabel.setText('請輸入股票代碼')
-            self.chartView.setVisible(False)  # 沒有數據時不顯示
+            # self.chartView.setVisible(False)  # 沒有數據時不顯示
             return
 
         self.stock = twstock.Stock(stock_code)
         start_date = self.startDateEdit.date().toPyDate()
-        historical_data = self.stock.fetch_from(start_date.year, start_date.month)
-        self.showStockChart(historical_data, stock_code)
-        self.chartView.setVisible(True)
+        self.historical_data = self.stock.fetch_from(start_date.year, start_date.month)
+        self.showStockChart(self.historical_data, stock_code)
+        # self.chartView.setVisible(True)
+        
         self.fetchRealTimeStockInfo()
+        self.showStockInfo()
+
+        # # 創建 DataFrame
+        # df = pd.DataFrame(historical_data)
+        # df.columns = ['date', 'capacity', 'turnover', 'open', 'high', 'low', 'close', 'change', 'transaction']
+
+        # # 計算 KD 值
+        # kd_values = self.calculate_KD(df, n=9)
+        # print(kd_values.tail(1))
 
         self.setLayoutVisible(self.stockInfoLayout, True)
         self.setLayoutVisible(self.stockChartLayout, True)
 
         self.updateBestLabels()
+
+    # 計算 KD 值的函數
+    def calculate_KD(self, data, n=9):
+        low_min = data['low'].rolling(window=n, min_periods=1).min()
+        high_max = data['high'].rolling(window=n, min_periods=1).max()
+
+        rsv = ((data['close'] - low_min) / (high_max - low_min)) * 100
+        data['K'] = rsv.ewm(com=2).mean()
+        data['D'] = data['K'].ewm(com=2).mean()
+
+        return data[['date', 'K', 'D']]
+
 
     def showStockChart(self, historical_data, stock_code):
         series = QLineSeries()
@@ -311,9 +337,9 @@ class StockApp(QWidget):
         else:
             self.realTimeInfoLabel.setText('無法獲取即時資訊')
 
-        self.showYesterdayInfo()
+       
 
-    def showYesterdayInfo(self):
+    def showStockInfo(self):
 
         self.priceLabel.setText(f'成交價: {self.stock.price[-1]}')
         self.yesterdayCloseLabel.setText(f'昨收: {self.stock.close[-1]}')
@@ -345,6 +371,21 @@ class StockApp(QWidget):
 
         self.averagePriceLabel.setText(f'成交均價: {(self.stock.turnover[-1]/self.stock.capacity[-1]):.1f}元')
         
+        # 創建 DataFrame
+        df = pd.DataFrame(self.historical_data)
+        df.columns = ['date', 'capacity', 'turnover', 'open', 'high', 'low', 'close', 'change', 'transaction']
+
+        # 計算 KD 值
+        kd_values = self.calculate_KD(df, n=9)
+        # print(kd_values)
+        latest_kd = kd_values.tail(1)
+
+        # 獲取 K 和 D 值
+        latest_K = latest_kd['K'].iloc[0]
+        latest_D = latest_kd['D'].iloc[0]
+
+        self.kValueLabel.setText(f'K值: {latest_K:.1f}')
+        self.dValueLabel.setText(f'D值: {latest_D:.1f}')
 
         # 顯示昨日收盤資訊
         # if self.stock:
