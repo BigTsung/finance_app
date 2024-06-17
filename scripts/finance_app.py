@@ -175,10 +175,10 @@ class StockApp(QWidget):
         self.addTitleLable(layoutV,'輸入代號',16,True)
         self.addLine(layoutV)
 
-        self.startDateEdit = QDateEdit()
-        self.startDateEdit.setDate(QDate.currentDate())
-        self.startDateEdit.setCalendarPopup(True)
-        self.startDateEdit.dateChanged.connect(self.updateChart)
+        # self.startDateEdit = QDateEdit()
+        # self.startDateEdit.setDate(QDate.currentDate())
+        # self.startDateEdit.setCalendarPopup(True)
+        # self.startDateEdit.dateChanged.connect(self.updateChart)
 
 
         self.stockInput = QLineEdit()
@@ -189,7 +189,7 @@ class StockApp(QWidget):
         layoutH.addWidget(fetchButton)
 
         layoutV.addLayout(layoutH)
-        layoutV.addWidget(self.startDateEdit)
+        # layoutV.addWidget(self.startDateEdit)
 
         return layoutV
 
@@ -258,7 +258,8 @@ class StockApp(QWidget):
             return
 
         self.stock = twstock.Stock(stock_code)
-        start_date = self.startDateEdit.date().toPyDate()
+        # start_date = self.startDateEdit.date().toPyDate() #使用者輸入
+        start_date = datetime.now().date()  # 這行將日期設置為程式執行時的日期
         self.historical_data = self.stock.fetch_from(start_date.year, start_date.month)
         self.showStockChart(self.historical_data, stock_code)
         # self.chartView.setVisible(True)
@@ -364,7 +365,12 @@ class StockApp(QWidget):
         self.lowPriceLabel.setText(f'最低: {self.stock.low[-1]}')
 
         self.volumeLabel.setText(f'成交張數: {round(self.stock.capacity[-1]/1000)}')
-        self.amountLabel.setText(f'成交金額: {self.stock.turnover[-1]}')
+
+        turnover_in_billion = self.stock.turnover[-1] / 1e8
+        formatted_turnover = f'{turnover_in_billion:.2f}億'
+        self.amountLabel.setText(f'成交金額: {formatted_turnover}')
+        
+
         self.transactionCountLabel.setText(f'成交筆數: {self.stock.transaction[-1]}')
 
         self.averageVolumeLabel.setText(f'成交均張: {(self.stock.capacity[-1]/1000/self.stock.transaction[-1]):.1f}張/筆')
@@ -390,7 +396,6 @@ class StockApp(QWidget):
         # 顯示昨日收盤資訊
         # if self.stock:
         #     self.yesterdayInfoLabel.setText(f'昨日開盤價: {self.stock.open[-1]}\n昨日最高價: {self.stock.high[-1]}\n昨日最低價: {self.stock.low[-1]}\n昨日收盤價: {self.stock.price[-1]}')
-
 
 def checkInternetConnection():
     try:
