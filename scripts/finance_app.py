@@ -15,13 +15,16 @@ class StockApp(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.stock_code = ''  # 初始化 stock_code 為空字串
 
     def initUI(self):
 
         # layout init
-        layoutMain = QHBoxLayout(self)
+        layoutMain = QVBoxLayout(self)
+        layoutSingleStockInfo = QHBoxLayout(self)
         layoutStockInfo = QVBoxLayout(self)
         layoutStockChart = QVBoxLayout(self)
+        layoutLooking = QVBoxLayout(self)
 
         # input layout setting
         inputLayout = self.inputUISetting()
@@ -29,24 +32,28 @@ class StockApp(QWidget):
         
         # stock info layout
         self.stockInfoLayout = self.stockInfoSetting()
-        self.setLayoutVisible(self.stockInfoLayout, False)
+        self.setLayoutVisible(self.stockInfoLayout, True)
         layoutStockInfo.addLayout(self.stockInfoLayout)
 
-        layoutMain.addLayout(layoutStockInfo)
+        layoutSingleStockInfo.addLayout(layoutStockInfo)
         
         # chart layout
         self.stockChartLayout = self.stockChartSetting()
-        self.setLayoutVisible(self.stockChartLayout, False)
+        self.setLayoutVisible(self.stockChartLayout, True)
         layoutStockChart.addLayout(self.stockChartLayout)
         
-        layoutMain.addLayout(layoutStockChart)
+        layoutSingleStockInfo.addLayout(layoutStockChart)
 
-        # network light layout 
+         # network light layout 
         self.networkCheckingLayout = self.networkChecking()
         # self.setLayoutVisible(self.networkCheckingLayout, False)
-        layoutMain.addLayout(self.networkCheckingLayout)
+        layoutSingleStockInfo.addLayout(self.networkCheckingLayout)
 
-        
+        layoutMain.addLayout(layoutSingleStockInfo)    
+
+        # 新增的功能佈局
+        self.lookingLayout = self.lookingSetting()
+        layoutMain.addLayout(self.lookingLayout)
 
         # main layout init
         self.setLayout(layoutMain)
@@ -67,19 +74,35 @@ class StockApp(QWidget):
         layoutV.addWidget(self.networkStatusLabel, 0, Qt.AlignRight | Qt.AlignTop)
         return layoutV
 
+    # def stockLookingSetting(self):
+    #     self.looking = QChartView()
+    #     self.looking.setRenderHint(QPainter.Antialiasing)
+    #     self.looking.setMinimumHeight(400)
+    #     self.looking.setMinimumWidth(600)
+    #     self.looking.setVisible(True)
+
+    #     layoutV = QVBoxLayout()
+
+    #     self.addTitleLable(layoutV,'股價11111',16,True)
+    #     self.addLine(layoutV)
+    #     layoutV.addWidget(self.looking, 0, Qt.AlignRight | Qt.AlignTop)
+
     def stockChartSetting(self):
         print("stockChartSetting")
         self.chartView = QChartView()
         self.chartView.setRenderHint(QPainter.Antialiasing)
         self.chartView.setMinimumHeight(400)
         self.chartView.setMinimumWidth(600)
-        self.chartView.setVisible(False)
+        self.chartView.setVisible(True)
 
         layoutV = QVBoxLayout()
-
-        self.addTitleLable(layoutV,'股價走勢圖',16,True)
+        
+        title_label = self.addTitleLable(layoutV, '股價走勢圖', 16, True)
         self.addLine(layoutV)
         layoutV.addWidget(self.chartView, 0, Qt.AlignRight | Qt.AlignTop)
+
+        # 設置標籤的寬度
+        title_label.setFixedWidth(200)  # 可以調整寬度使其與「輸入代號」對齊
 
         return layoutV
 
@@ -172,14 +195,9 @@ class StockApp(QWidget):
     def inputUISetting(self):
         layoutV = QVBoxLayout()
         layoutH = QHBoxLayout()
-        self.addTitleLable(layoutV,'輸入代號',16,True)
+        
+        title_label = self.addTitleLable(layoutV, '輸入代號', 16, True)
         self.addLine(layoutV)
-
-        # self.startDateEdit = QDateEdit()
-        # self.startDateEdit.setDate(QDate.currentDate())
-        # self.startDateEdit.setCalendarPopup(True)
-        # self.startDateEdit.dateChanged.connect(self.updateChart)
-
 
         self.stockInput = QLineEdit()
         fetchButton = QPushButton('獲取股票資訊')
@@ -189,7 +207,23 @@ class StockApp(QWidget):
         layoutH.addWidget(fetchButton)
 
         layoutV.addLayout(layoutH)
-        # layoutV.addWidget(self.startDateEdit)
+
+        # 設置標籤和輸入框的寬度
+        title_label.setFixedWidth(200)  # 可以調整寬度使其與「股價走勢圖」對齊
+        self.stockInput.setFixedWidth(200)  # 可以調整寬度使其與「股價走勢圖」對齊
+
+        return layoutV
+
+    # 新增功能的佈局設置
+    def lookingSetting(self):
+        layoutV = QVBoxLayout()
+
+        self.addTitleLable(layoutV, 'new funcion', 16, True)
+        self.addLine(layoutV)
+
+        # 可以在這裡添加新的控件，例如按鈕、標籤等
+        newFunctionButton = QPushButton('new funcion')
+        layoutV.addWidget(newFunctionButton)
 
         return layoutV
 
@@ -211,13 +245,14 @@ class StockApp(QWidget):
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line, 0, Qt.AlignTop)
 
-    def addTitleLable(self, layout, name, fontSize = 12, Bold = False):
+    def addTitleLable(self, layout, name, fontSize=12, Bold=False):
         titleLabel = QLabel(name, self)
         font = QFont()
         font.setPointSize(fontSize)  # 設置字體大小
-        font.setBold(Bold)     # 設置加粗
+        font.setBold(Bold)  # 設置加粗
         titleLabel.setFont(font)
         layout.addWidget(titleLabel, 0, Qt.AlignLeft | Qt.AlignTop)
+        return titleLabel  # 返回標籤對象
 
     def updateNetworkStatus(self, isConnected):
         if isConnected:
@@ -230,38 +265,45 @@ class StockApp(QWidget):
             )
 
     def updateBestLabels(self):
-
         bfp = BestFourPoint(self.stock)
-
-        self.updateLabel(self.bestBuyLabel1, bfp.best_buy_1())
+        
+        self.updateLabel(self.bestBuyLabel1, bfp.best_buy_1(), special=True)
         self.updateLabel(self.bestBuyLabel2, bfp.best_buy_2())
         self.updateLabel(self.bestBuyLabel3, bfp.best_buy_3())
         self.updateLabel(self.bestBuyLabel4, bfp.best_buy_4())
 
-        self.updateLabel(self.bestSellLabel1, bfp.best_sell_1())
+        self.updateLabel(self.bestSellLabel1, bfp.best_sell_1(), special=False)
         self.updateLabel(self.bestSellLabel2, bfp.best_sell_2())
         self.updateLabel(self.bestSellLabel3, bfp.best_sell_3())
         self.updateLabel(self.bestSellLabel4, bfp.best_sell_4())
 
-    def updateLabel(self, label, value):
+    def updateLabel(self, label, value, special=False):
         if value:
-            label.setStyleSheet("QLabel { background-color : green; color : white; }")
+            if special:
+                label.setStyleSheet("QLabel { background-color : red; color : white; }")
+            else:
+                label.setStyleSheet("QLabel { background-color : orange; color : white; }")
         else:
             label.setStyleSheet("QLabel { background-color : gray; color : white; }")
 
 
     def updateChart(self):
-        stock_code = self.stockInput.text()
-        if not stock_code:
+        new_stock_code = self.stockInput.text()
+        if new_stock_code == self.stock_code:
+            print("just check")
+            return  # 如果新輸入的股票代號與原本的相同，什麼都不做
+        self.stock_code = new_stock_code  # 更新 stock_code 為新的輸入值
+        
+        if not self.stock_code:
             self.infoLabel.setText('請輸入股票代碼')
             # self.chartView.setVisible(False)  # 沒有數據時不顯示
             return
 
-        self.stock = twstock.Stock(stock_code)
+        self.stock = twstock.Stock(self.stock_code)
         # start_date = self.startDateEdit.date().toPyDate() #使用者輸入
         start_date = datetime.now().date()  # 這行將日期設置為程式執行時的日期
         self.historical_data = self.stock.fetch_from(start_date.year, start_date.month)
-        self.showStockChart(self.historical_data, stock_code)
+        self.showStockChart(self.historical_data, self.stock_code)
         # self.chartView.setVisible(True)
         
         self.fetchRealTimeStockInfo()

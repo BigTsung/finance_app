@@ -6,7 +6,10 @@
 * 顯示近期5日的股價折線圖(Display a line chart of stock prices for the past 5 days)
 
     <img src="images/v1.png" alt="alt text" width="500">
-
+#### V2
+另外提供多條件的過濾方式，找到符合條件的個股，如：
+* 跌深就是好股
+* 體質需優秀
 # reference
 * [twstock Documentation](https://twstock.readthedocs.io/_/downloads/zh-tw/latest/pdf/)
 * [Goodinfo!台灣股市資訊網](https://goodinfo.tw/tw/index.asp)
