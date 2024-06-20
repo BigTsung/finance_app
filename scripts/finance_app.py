@@ -4,6 +4,7 @@ import pandas as pd
 import urllib.request
 
 from twstock import BestFourPoint
+from twstock import Stock
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QMainWindow, QDateEdit, QFrame
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QDateTimeAxis, QValueAxis
 from PyQt5.QtGui import QPainter, QFont
@@ -52,8 +53,8 @@ class StockApp(QWidget):
         layoutMain.addLayout(layoutSingleStockInfo)    
 
         # 新增的功能佈局
-        self.lookingLayout = self.lookingSetting()
-        layoutMain.addLayout(self.lookingLayout)
+        # self.lookingLayout = self.lookingSetting()
+        # layoutMain.addLayout(self.lookingLayout)
 
         # main layout init
         self.setLayout(layoutMain)
@@ -121,6 +122,9 @@ class StockApp(QWidget):
         self.openPriceLabel = QLabel('開盤: -', self)
         self.highPriceLabel = QLabel('最高: -', self)
         self.lowPriceLabel = QLabel('最低: -')
+        self.continuousLabel = QLabel('持續上升天數: -', self)
+        self.average5daysPriceLabel = QLabel('5日均價: -', self)
+        self.average5daysCapacityLabel = QLabel('5日均量: -', self)
 
         self.volumeLabel = QLabel('成交張數: -', self)
         self.amountLabel = QLabel('成交金額: -', self)
@@ -164,6 +168,10 @@ class StockApp(QWidget):
         layoutStockLeft.addWidget(self.openPriceLabel)
         layoutStockLeft.addWidget(self.highPriceLabel)
         layoutStockLeft.addWidget(self.lowPriceLabel)
+        layoutStockLeft.addWidget(self.continuousLabel)
+        layoutStockLeft.addWidget(self.average5daysPriceLabel)
+        layoutStockLeft.addWidget(self.average5daysCapacityLabel)
+        
         layoutH.addLayout(layoutStockLeft)
 
         # add stock info
@@ -215,17 +223,17 @@ class StockApp(QWidget):
         return layoutV
 
     # 新增功能的佈局設置
-    def lookingSetting(self):
-        layoutV = QVBoxLayout()
+    # def lookingSetting(self):
+    #     layoutV = QVBoxLayout()
 
-        self.addTitleLable(layoutV, 'new funcion', 16, True)
-        self.addLine(layoutV)
+    #     self.addTitleLable(layoutV, 'new function', 16, True)
+    #     self.addLine(layoutV)
 
-        # 可以在這裡添加新的控件，例如按鈕、標籤等
-        newFunctionButton = QPushButton('new funcion')
-        layoutV.addWidget(newFunctionButton)
+    #     # 可以在這裡添加新的控件，例如按鈕、標籤等
+    #     newFunctionButton = QPushButton('new function')
+    #     layoutV.addWidget(newFunctionButton)
 
-        return layoutV
+    #     return layoutV
 
 
     def setLayoutVisible(self, layout, visible):
@@ -264,6 +272,11 @@ class StockApp(QWidget):
                 "QLabel { background-color: red; border-radius: 10px; }"
             )
 
+    def updateAnalysics(self):
+        # self.stock.con
+        analytics_result = Stock(self.stock)
+        print(analytics_result)
+
     def updateBestLabels(self):
         bfp = BestFourPoint(self.stock)
         
@@ -300,6 +313,11 @@ class StockApp(QWidget):
             return
 
         self.stock = twstock.Stock(self.stock_code)
+        # test
+        # print(self.stock.price)
+        # print(self.stock.continuous(self.stock.price))
+        # print(self.stock.moving_average(self.stock.price, 5))
+
         # start_date = self.startDateEdit.date().toPyDate() #使用者輸入
         start_date = datetime.now().date()  # 這行將日期設置為程式執行時的日期
         self.historical_data = self.stock.fetch_from(start_date.year, start_date.month)
@@ -321,6 +339,7 @@ class StockApp(QWidget):
         self.setLayoutVisible(self.stockChartLayout, True)
 
         self.updateBestLabels()
+        # self.updateAnalysics()
 
     # 計算 KD 值的函數
     def calculate_KD(self, data, n=9):
@@ -405,7 +424,10 @@ class StockApp(QWidget):
         self.openPriceLabel.setText(f'開盤: {self.stock.open[-1]}')
         self.highPriceLabel.setText(f'最高: {self.stock.high[-1]}')
         self.lowPriceLabel.setText(f'最低: {self.stock.low[-1]}')
-
+        self.continuousLabel.setText(f'持續上升天數: {self.stock.continuous(self.stock.price)}')
+        self.average5daysPriceLabel.setText(f'5日均價: {self.stock.moving_average(self.stock.price,5)[-1]}')
+        self.average5daysCapacityLabel.setText(f'5日均量: {self.stock.moving_average(self.stock.capacity,5)[-1]}')
+        
         self.volumeLabel.setText(f'成交張數: {round(self.stock.capacity[-1]/1000)}')
 
         turnover_in_billion = self.stock.turnover[-1] / 1e8
