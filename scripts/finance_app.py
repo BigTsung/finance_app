@@ -5,6 +5,9 @@ import urllib.request
 
 from twstock import BestFourPoint
 from twstock import Stock
+import yfinance as yf
+import requests
+from bs4 import BeautifulSoup
 from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QMainWindow, QDateEdit, QFrame
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QDateTimeAxis, QValueAxis
 from PyQt5.QtGui import QPainter, QFont
@@ -33,14 +36,14 @@ class StockApp(QWidget):
         
         # stock info layout
         self.stockInfoLayout = self.stockInfoSetting()
-        self.setLayoutVisible(self.stockInfoLayout, True)
+        self.setLayoutVisible(self.stockInfoLayout, False)
         layoutStockInfo.addLayout(self.stockInfoLayout)
 
         layoutSingleStockInfo.addLayout(layoutStockInfo)
         
         # chart layout
         self.stockChartLayout = self.stockChartSetting()
-        self.setLayoutVisible(self.stockChartLayout, True)
+        self.setLayoutVisible(self.stockChartLayout, False)
         layoutStockChart.addLayout(self.stockChartLayout)
         
         layoutSingleStockInfo.addLayout(layoutStockChart)
@@ -74,19 +77,6 @@ class StockApp(QWidget):
 
         layoutV.addWidget(self.networkStatusLabel, 0, Qt.AlignRight | Qt.AlignTop)
         return layoutV
-
-    # def stockLookingSetting(self):
-    #     self.looking = QChartView()
-    #     self.looking.setRenderHint(QPainter.Antialiasing)
-    #     self.looking.setMinimumHeight(400)
-    #     self.looking.setMinimumWidth(600)
-    #     self.looking.setVisible(True)
-
-    #     layoutV = QVBoxLayout()
-
-    #     self.addTitleLable(layoutV,'股價11111',16,True)
-    #     self.addLine(layoutV)
-    #     layoutV.addWidget(self.looking, 0, Qt.AlignRight | Qt.AlignTop)
 
     def stockChartSetting(self):
         print("stockChartSetting")
@@ -134,6 +124,7 @@ class StockApp(QWidget):
 
         self.kValueLabel = QLabel('K值: -', self)
         self.dValueLabel = QLabel('D值: -', self)
+        self.epsLabel = QLabel('EPS: -', self)
 
 
         self.bestBuyLabel1 = QLabel('量大收紅', self)
@@ -182,6 +173,7 @@ class StockApp(QWidget):
         layoutStockRight.addWidget(self.averagePriceLabel)
         layoutStockRight.addWidget(self.kValueLabel)
         layoutStockRight.addWidget(self.dValueLabel)
+        layoutStockRight.addWidget(self.epsLabel)
         layoutH.addLayout(layoutStockRight)
 
         # add stock info
@@ -341,6 +333,98 @@ class StockApp(QWidget):
         self.updateBestLabels()
         # self.updateAnalysics()
 
+    def get_eps_from_brokerage(self, stock_code):
+        api_url = f'https://api.brokerage.com/v1/stock/{stock_code}/financials'
+        headers = {
+            'Authorization': 'Bearer YOUR_API_KEY'
+        }
+        response = requests.get(api_url, headers=headers)
+        data = response.json()
+
+        if 'EPS' in data:
+            return data['EPS']
+        return None
+
+    # def get_eps(self, stock_code):
+    #     stock = yf.Ticker(stock_code)
+    #     financials = stock.financials
+    #     balance_sheet = stock.balance_sheet
+
+    #     try:
+    #         # 获取净利润
+    #         net_income = financials.loc['Net Income'].values[0]
+    #         # 获取流通股数
+    #         shares_outstanding = balance_sheet.loc['Common Stock'].values[0]
+
+    #         # 计算 EPS
+    #         eps = net_income / shares_outstanding
+    #         return eps
+    #     except KeyError as e:
+    #         print(f"Key error: {e}")
+    #         return None
+    #     except Exception as e:
+    #         print(f"Error fetching data for {stock_code}: {e}")
+            # return None
+
+    # def get_eps_from_mops(self, stock_code, year, season):
+    #     url = f'https://mops.twse.com.tw/mops/web/t05st22_q1?co_id={stock_code}&year={year}&season={season}'
+    #     response = requests.get(url)
+    #     response.encoding = 'utf-8'
+
+    #     soup = BeautifulSoup(response.text, 'html.parser')
+    #     tables = soup.find_all('table')
+
+    #     for table in tables:
+    #         if '基本每股盈餘（元）' in table.text:
+    #             rows = table.find_all('tr')
+    #             for row in rows:
+    #                 cells = row.find_all('td')
+    #                 if len(cells) > 1 and '基本每股盈餘（元）' in cells[0].text:
+    #                     eps = cells[1].text.strip()
+    #                     return eps
+
+    #     return None
+
+    # def get_eps_from_mops(self, stock_code):
+    #     url = f'https://mops.twse.com.tw/mops/web/t05st22_q1?co_id={stock_code}&year=2023&season=01'
+    #     response = requests.get(url)
+    #     response.encoding = 'utf-8'
+
+    #     print("URL:", url)
+
+    #     soup = BeautifulSoup(response.text, 'html.parser')
+    #     tables = soup.find_all('table')
+        
+    #     for table in tables:
+    #         if '每股盈餘(EPS)單位：元' in table.text:
+    #             rows = table.find_all('tr')
+    #             for row in rows:
+    #                 cells = row.find_all('td')
+    #                 if len(cells) > 1 and '基本每股盈餘（元）' in cells[0].text:
+    #                     eps = cells[1].text.strip()
+    #                     return eps
+
+    #     return None
+
+    # get EPS by Yahoo Finance
+    # def get_eps(self, stock_code):
+    #     stock = yf.Ticker(stock_code)
+    #     print("stock code:", stock_code)
+    #     try:
+    #         financials = stock.financials
+    #         balance_sheet = stock.balance_sheet
+
+    #         if 'Net Income' not in financials.index or 'Common Stock' not in balance_sheet.index:
+    #             raise ValueError("Required financial data not available")
+
+    #         net_income = financials.loc['Net Income'][0]
+    #         shares_outstanding = balance_sheet.loc['Common Stock'][0]
+    #         eps = net_income / shares_outstanding
+    #         return eps
+    #     except Exception as e:
+    #         print(f"Error fetching EPS for {stock_code}: {e}")
+    #         return None
+
     # 計算 KD 值的函數
     def calculate_KD(self, data, n=9):
         low_min = data['low'].rolling(window=n, min_periods=1).min()
@@ -436,9 +520,7 @@ class StockApp(QWidget):
         
 
         self.transactionCountLabel.setText(f'成交筆數: {self.stock.transaction[-1]}')
-
         self.averageVolumeLabel.setText(f'成交均張: {(self.stock.capacity[-1]/1000/self.stock.transaction[-1]):.1f}張/筆')
-
         self.averagePriceLabel.setText(f'成交均價: {(self.stock.turnover[-1]/self.stock.capacity[-1]):.1f}元')
         
         # 創建 DataFrame
@@ -456,6 +538,16 @@ class StockApp(QWidget):
 
         self.kValueLabel.setText(f'K值: {latest_K:.1f}')
         self.dValueLabel.setText(f'D值: {latest_D:.1f}')
+
+        
+        # eps = self.get_eps(self.stock_code)
+        # eps = self.get_eps_from_mops(self.stock_code, 2024, 1)
+        # eps = self.get_eps_from_brokerage(self.stock_code)
+        # eps = self.get_eps(self.stock_code)
+        
+        eps=""
+        print("EPS:", eps)
+        # self.epsLabel.setText(f'D值: {eps:.1f}')
 
         # 顯示昨日收盤資訊
         # if self.stock:
