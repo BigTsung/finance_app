@@ -3,18 +3,33 @@ import pandas as pd
 from ui_components import create_label, create_separator
 from utils import format_number
 
-def fetch_stock_info(stock_entry, left_frame_content, center_frame_content, right_frame_content):
+def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, left_frame_content_3, center_frame_content, right_frame_content):
     """獲取並顯示股票基本資訊和財務數據"""
     stock_symbol = stock_entry.get()
     stock = yf.Ticker(stock_symbol)
     stock_info = stock.info  # 獲取股票基本資訊
-
+    
+   # 使用迴圈遍歷字典中的所有鍵值對
+    # for key, value in stock_info.items():
+    #     print(f"{key}: {value}")
     # 清空區塊 1 和區塊 2 的內容
-    clear_frame_content(left_frame_content)
+    clear_frame_content(left_frame_content_1)
+    clear_frame_content(left_frame_content_2)
+    clear_frame_content(left_frame_content_3)
     clear_frame_content(center_frame_content)
     clear_frame_content(right_frame_content)
 
     # 顯示基本資訊
+    company_info_fields = [
+        ("longName", "Long Name", "公司名稱"),
+        ("industry", "Industry", "產業"),
+        ("symbol", "Symbol", "股票代號"),
+        ("sector", "Sector", "產業類別"),
+        ("longBusinessSummary", "Long Business Summary", "公司業務簡介")
+    ]
+
+    display_basic_info(stock_info, left_frame_content_1, company_info_fields)
+    
     basic_info_fields = [
         ("marketCap", "Market Cap", "市值"),
         ("fiftyTwoWeekLow", "52-Week Low", "52週最低價"),
@@ -25,8 +40,16 @@ def fetch_stock_info(stock_entry, left_frame_content, center_frame_content, righ
         ("trailingPE", "Trailing P/E", "本益比"),
         ("forwardPE", "Forward P/E", "預期本益比"),
         ("trailingPegRatio", "Trailing PEG Ratio", "本益成長比率"),
+        ("earningsGrowth", "Earnings Growth", "收益增長率"),
+        ("revenueGrowth", "Revenue Growth", "營收增長率"),
+        ("fiveYearAvgDividendYield", "5-Year Avg Dividend Yield", "五年平均股息率"),
+        ("profitMargins", "Profit Margins", "利潤率"),
+        ("sharesOutstanding", "Shares Outstanding", "在外流通股數"),
+        ("lastSplitDate", "Last Split Date", "最近拆股日期"),
+        ("grossMargins", "Gross Margins", "毛利率"),
+        ("beta", "Beta", "貝塔值"),
     ]
-    display_basic_info(stock_info, left_frame_content, basic_info_fields)
+    display_basic_info(stock_info, left_frame_content_2, basic_info_fields)
 
     # 顯示財務數據
     financial_fields = [
