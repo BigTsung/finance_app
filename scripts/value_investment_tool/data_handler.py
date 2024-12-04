@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 from ui_components import create_label, create_separator
 from utils import format_number
+import traceback
 
 def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, left_frame_content_3, center_frame_content, right_frame_content):
     """獲取並顯示股票基本資訊和財務數據"""
@@ -9,10 +10,46 @@ def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, le
     stock = yf.Ticker(stock_symbol)
     stock_info = stock.info  # 獲取股票基本資訊
     
-   # 使用迴圈遍歷字典中的所有鍵值對
-    # for key, value in stock_info.items():
-    #     print(f"{key}: {value}")
-    # 清空區塊 1 和區塊 2 的內容
+    # 查看財務報表中的所有字段
+    financials = stock.financials
+    quarterly_financials = stock.quarterly_financials
+    
+    balance_sheet = stock.balance_sheet
+    quarterly_balance_sheet = stock.quarterly_balance_sheet
+    
+    cash_flow = stock.cashflow
+    quarterly_cashflow = stock.quarterly_cashflow
+
+
+    pd.set_option('display.max_rows', None)
+    # pd.set_option('display.max_columns', None)
+    print(quarterly_balance_sheet)
+    # print(quarterly_financials)
+    # 在完成後恢復顯示選項
+    pd.reset_option('display.max_rows')
+    # pd.reset_option('display.max_columns')
+    # try:
+    #     # 獲取財務資料
+    #     financials = stock.financials
+    #     balance_sheet = stock.balance_sheet
+    #     cash_flow = stock.cashflow
+
+    #     print(stock.quarterly_financials)
+
+    #     # 將資料存成 Excel 檔案
+    #     with pd.ExcelWriter('stock_data.xlsx') as writer:
+    #         financials.to_excel(writer, sheet_name='Financials')
+    #         balance_sheet.to_excel(writer, sheet_name='Balance Sheet')
+    #         cash_flow.to_excel(writer, sheet_name='Cash Flow')
+
+    #     print("資料已成功存成 Excel 檔案")
+
+    # except Exception as e:
+    #     print(f"Error retrieving financial data: {e}")
+
+    #     print(balance_sheet)
+
+    # 清空區塊內容
     clear_frame_content(left_frame_content_1)
     clear_frame_content(left_frame_content_2)
     clear_frame_content(left_frame_content_3)
@@ -27,9 +64,8 @@ def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, le
         ("sector", "Sector", "產業類別"),
         ("longBusinessSummary", "Long Business Summary", "公司業務簡介")
     ]
-
     display_basic_info(stock_info, left_frame_content_1, company_info_fields)
-    
+
     basic_info_fields = [
         ("marketCap", "Market Cap", "市值"),
         ("fiftyTwoWeekLow", "52-Week Low", "52週最低價"),
@@ -71,46 +107,36 @@ def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, le
 
     # 獲取並顯示 Net Income
     try:
-        income_statement = stock.financials
-        net_income = income_statement.loc["Net Income"].iloc[0] if "Net Income" in income_statement.index else "N/A"
+        net_income = quarterly_financials.loc["Net Income"].iloc[0] if "Net Income" in quarterly_financials.index else "N/A"
         formatted_net_income = format_number(net_income)
     except Exception:
         formatted_net_income = "N/A"
 
-    financial_fields.append(("netIncome", "Net Income", f"淨利潤: {formatted_net_income}"))
+    financial_fields.append(("netIncome", "Net Income", f"淨利: {formatted_net_income}"))
 
-    # 獲取保留盈餘並計算長期淨利
-    try:
-        balance_sheet = stock.balance_sheet
-        # 獲取保留盈餘 (Retained Earnings) 數據
-        retained_earnings = balance_sheet.loc["Retained Earnings"].iloc[0]
-        formatted_retained_earnings = format_number(retained_earnings)
+    # # 獲取保留盈餘並計算長期淨利
+    # try:
+    #     # 獲取保留盈餘 (Retained Earnings) 數據
+    #     retained_earnings = balance_sheet.loc["Retained Earnings"].iloc[0]
+    #     formatted_retained_earnings = format_number(retained_earnings)
 
-        # 計算長期淨利，這裡假設長期淨利等於保留盈餘
-        long_term_net_income = retained_earnings
-        formatted_long_term_net_income = format_number(long_term_net_income)
+    #     # 計算長期淨利，這裡假設長期淨利等於保留盈餘
+    #     long_term_net_income = retained_earnings
+    #     formatted_long_term_net_income = format_number(long_term_net_income)
+    # except Exception as e:
+    #     print("無法取得 Retained Earnings:", str(e))
+    #     formatted_retained_earnings = "N/A"
+    #     formatted_long_term_net_income = "N/A"
 
-        # print(f"最新的 Retained Earnings: {formatted_retained_earnings}")
-        # print(f"估算的 Long Term Net Income: {formatted_long_term_net_income}")
-    except Exception as e:
-        print("無法取得 Retained Earnings:", str(e))
-        formatted_retained_earnings = "N/A"
-        formatted_long_term_net_income = "N/A"
-
-    # 在 financial_fields 中添加保留盈餘和長期淨利數據
-    financial_fields.append(("retainedEarnings", "Retained Earnings", f"保留盈餘: {formatted_retained_earnings}"))
-    financial_fields.append(("longTermNetIncome", "Long Term Net Income", f"長期淨利: {formatted_long_term_net_income}"))
-
+    # # 在 financial_fields 中添加保留盈餘和長期淨利數據
+    # financial_fields.append(("retainedEarnings", "Retained Earnings", f"保留盈餘: {formatted_retained_earnings}"))
+    # financial_fields.append(("longTermNetIncome", "Long Term Net Income", f"長期淨利: {formatted_long_term_net_income}"))
 
     # 獲取財務報表中的長期債務數據
     try:
-        balance_sheet = stock.balance_sheet
-
         # 獲取最新的 Long Term Debt 數據
         latest_long_term_debt = balance_sheet.loc["Long Term Debt"].iloc[0]
         formatted_long_term_debt = format_number(latest_long_term_debt)
-
-        # print(f"最新的 Long Term Debt: {formatted_long_term_debt}")
     except Exception as e:
         print("無法取得 Long Term Debt:", str(e))
         formatted_long_term_debt = "N/A"
@@ -121,169 +147,315 @@ def fetch_stock_info(stock_entry, left_frame_content_1, left_frame_content_2, le
     # 確保在 display_financial_data() 被呼叫之前 financial_fields 已經包含最新的數據
     display_financial_data(stock, center_frame_content, financial_fields)
 
-    # 顯示 sharesOutstanding 成長狀況
-    try:
-        shares_outstanding = stock_info.get("sharesOutstanding", "N/A")
-        previous_shares_outstanding = 5000000000  # 假設一個數值作為過去的股數（實際應該從歷史資料取得）
+    # 顯示十全劍條件
+    display_condition_1(stock_info, right_frame_content)
+    display_condition_2(quarterly_financials, right_frame_content)
+    display_condition_3(quarterly_financials, right_frame_content)
+    display_condition_4(quarterly_financials, right_frame_content)
+    display_condition_5(quarterly_balance_sheet, right_frame_content)
+    display_condition_6(quarterly_balance_sheet, quarterly_financials, right_frame_content)
+    display_condition_7(quarterly_balance_sheet, right_frame_content)
 
-        if shares_outstanding != "N/A" and previous_shares_outstanding != "N/A":
-            if previous_shares_outstanding != 0:
-                growth_rate = ((shares_outstanding - previous_shares_outstanding) / previous_shares_outstanding) * 100
-                growth_status = "成長" if growth_rate > 0 else "下降"
-                formatted_growth_rate = f"{abs(growth_rate):.2f}%"
-                result = f"{growth_status} ({formatted_growth_rate})"
-            else:
-                result = "N/A"
-        else:
-            result = "N/A"
+    display_condition_8(quarterly_financials, right_frame_content)
+    display_condition_9(quarterly_cashflow, right_frame_content)
+    display_condition_10(quarterly_cashflow, right_frame_content)
 
-        create_label(center_frame_content, "Shares Outstanding Growth (股數成長狀況):", 2 * (len(financial_fields) + 5) - 1)
-        create_label(center_frame_content, result, 2 * (len(financial_fields) + 5) - 1, column=1)
-        create_separator(center_frame_content, 2 * (len(financial_fields) + 5))
-    except Exception as e:
-        create_label(center_frame_content, "Shares Outstanding Growth (股數成長狀況):", 2 * (len(financial_fields) + 5) - 1)
-        create_label(center_frame_content, "N/A", 2 * (len(financial_fields) + 5) - 1, column=1)
-        create_separator(center_frame_content, 2 * (len(financial_fields) + 5))
-
-    # 顯示 Growing Equity 成長狀況
-    try:
-        balance_sheet = stock.balance_sheet
-        stockholders_equity = balance_sheet.loc["Stockholders Equity"].iloc[0] if "Stockholders Equity" in balance_sheet.index else "N/A"
-        previous_stockholders_equity = balance_sheet.loc["Stockholders Equity"].iloc[1] if "Stockholders Equity" in balance_sheet.index and len(balance_sheet.loc["Stockholders Equity"]) > 1 else "N/A"
-
-        if stockholders_equity != "N/A" and previous_stockholders_equity != "N/A":
-            if previous_stockholders_equity != 0:
-                equity_growth_rate = ((stockholders_equity - previous_stockholders_equity) / previous_stockholders_equity) * 100
-                equity_status = "成長" if equity_growth_rate > 0 else f"下降 ({equity_growth_rate:.2f}%)"
-            else:
-                equity_status = "N/A"
-        else:
-            equity_status = "N/A"
-
-        create_label(center_frame_content, "Growing Equity (股東權益成長):", 2 * (len(financial_fields) + 6) - 1)
-        create_label(center_frame_content, equity_status, 2 * (len(financial_fields) + 6) - 1, column=1)
-        create_separator(center_frame_content, 2 * (len(financial_fields) + 6))
-    except Exception as e:
-        create_label(center_frame_content, "Growing Equity (股東權益成長):", 2 * (len(financial_fields) + 6) - 1)
-        create_label(center_frame_content, "N/A", 2 * (len(financial_fields) + 6) - 1, column=1)
-        create_separator(center_frame_content, 2 * (len(financial_fields) + 6))
-
-    # 顯示 Investing Cash Flow
-    try:
-        cash_flow = stock.cashflow
-        investing_cash_flow = cash_flow.loc['Investing Cash Flow'].iloc[0] if 'Investing Cash Flow' in cash_flow.index else "N/A"
-        formatted_investing_cash_flow = format_number(investing_cash_flow)
-    except Exception:
-        formatted_investing_cash_flow = "N/A"
-
-    create_label(center_frame_content, "Investing Cash Flow (投資活動現金流量):", 2 * (len(financial_fields) + 7) - 1)
-    create_label(center_frame_content, formatted_investing_cash_flow, 2 * (len(financial_fields) + 7) - 1, column=1)
-    create_separator(center_frame_content, 2 * (len(financial_fields) + 7))
-
-    # 顯示 Financing Cash Flow
-    try:
-        cash_flow = stock.cashflow
-        # 直接嘗試取出 Financing Cash Flow
-        financing_cash_flow = cash_flow.loc['Financing Cash Flow'].iloc[0] if 'Financing Cash Flow' in cash_flow.index else "N/A"
-        
-        # 如果成功獲取且不是 'N/A'，則格式化數字
-        if financing_cash_flow != "N/A":
-            formatted_financing_cash_flow = format_number(financing_cash_flow)
-        else:
-            formatted_financing_cash_flow = "N/A"
-    except Exception as e:
-        # 如果在取值過程中遇到任何問題，將顯示 'N/A'
-        formatted_financing_cash_flow = "N/A"
-
-    # 顯示 'Financing Cash Flow' 的結果
-    create_label(center_frame_content, "Financing Cash Flow (籌資活動現金流量):", 2 * (len(financial_fields) + 8) - 1)
-    create_label(center_frame_content, formatted_financing_cash_flow, 2 * (len(financial_fields) + 8) - 1, column=1)
-    create_separator(center_frame_content, 2 * (len(financial_fields) + 8))
-
-    # 顯示十全劍的條件
-    # 條件 1: P/E < 25 || PEG < 1.0
+def display_condition_1(stock_info, right_frame_content):
     create_label(right_frame_content, "條件 1: P/E < 25 || PEG < 1.0", 0)
     condition_1_met = (stock_info.get('trailingPE', float('inf')) < 25) or (stock_info.get('trailingPegRatio', float('inf')) < 1.0)
     create_label(right_frame_content, "✅" if condition_1_met else "❌", 0, column=1)
 
-    # 條件 2: revenueGrowth > 0
-    create_label(right_frame_content, "條件 2: 營收增長率 > 0", 1)
-    condition_2_met = stock_info.get('revenueGrowth', 0) > 0
+# def display_condition_2(stock_info, right_frame_content):
+#     create_label(right_frame_content, "條件 2: 營收增長", 1)
+#     condition_2_met = stock_info.get('revenueGrowth', 0) > 0
+#     create_label(right_frame_content, "✅" if condition_2_met else "❌", 1, column=1)
+
+def display_condition_2(quarterly_financials, right_frame_content):
+    create_label(right_frame_content, "條件 2: 營收增長(最新季-上一季)", 1)
+    try:
+        total_revenue = quarterly_financials.loc['Total Revenue']
+        if len(total_revenue) >= 2:
+            latest_revenue = total_revenue.iloc[0]
+            previous_revenue = total_revenue.iloc[1]
+            growth_rate = ((latest_revenue - previous_revenue) / previous_revenue) * 100 if previous_revenue != 0 else 0
+            print("CONDITION 2")
+            print(latest_revenue)
+            print(previous_revenue)
+            print(growth_rate)
+            condition_2_met = growth_rate > 0
+        else:
+            condition_2_met = False
+    except Exception:
+        condition_2_met = False
     create_label(right_frame_content, "✅" if condition_2_met else "❌", 1, column=1)
 
-    # 條件 3: formatted_growth > 0
-    create_label(right_frame_content, "條件 3: 營業利潤成長率 > 0", 2)
-    condition_3_met = calculate_growth_rate(stock.financials.loc['Operating Income']) != "N/A" and float(calculate_growth_rate(stock.financials.loc['Operating Income']).replace('%', '')) > 0
-    create_label(right_frame_content, "✅" if condition_3_met else "❌", 2, column=1)
+# def display_condition_3(financials, right_frame_content):
+#     create_label(right_frame_content, "條件 3: 營業利益成長", 2)
+#     try:
+#         formatted_growth = calculate_growth_rate(financials.loc['Operating Income'])
+#         condition_3_met = formatted_growth != "N/A" and float(formatted_growth.replace('%', '')) > 0
+#         create_label(right_frame_content, "✅" if condition_3_met else "❌", 2, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 2, column=1)
 
-    # 條件 4: formatted_net_income_growth > 0
-    create_label(right_frame_content, "條件 4: 淨利潤成長率 > 0", 3)
-    condition_4_met = calculate_growth_rate(stock.financials.loc['Net Income']) != "N/A" and float(calculate_growth_rate(stock.financials.loc['Net Income']).replace('%', '')) > 0
-    create_label(right_frame_content, "✅" if condition_4_met else "❌", 3, column=1)
+def display_condition_3(quarterly_financials, right_frame_content):
+    create_label(right_frame_content, "條件 3: 營業利益成長", 2)
+    try:
+        # 獲取最新一季和前一季的營業收入數據
+        latest_value = quarterly_financials.loc['Operating Income'].iloc[0]
+        previous_value = quarterly_financials.loc['Operating Income'].iloc[1]
 
-    # 條件 5: 流動資產 > 流動負債
+        # 計算差值和成長比率
+        if pd.notna(latest_value) and pd.notna(previous_value) and previous_value != 0:
+            difference = latest_value - previous_value
+            growth_rate = (difference / previous_value) * 100
+
+            print("CONDITION 3")
+            print(latest_value)
+            print(previous_value)
+            print(growth_rate)
+            condition_3_met = growth_rate > 0
+        else:
+            condition_3_met = False
+
+        create_label(right_frame_content, "✅" if condition_3_met else "❌", 2, column=1)
+    except Exception:
+        create_label(right_frame_content, "❌", 2, column=1)
+
+# def display_condition_4(financials, right_frame_content):
+#     create_label(right_frame_content, "條件 4: 淨收入成長", 3)
+#     try:
+#         formatted_net_income_growth = calculate_growth_rate(financials.loc['Net Income'])
+#         condition_4_met = formatted_net_income_growth != "N/A" and float(formatted_net_income_growth.replace('%', '')) > 0
+#         create_label(right_frame_content, "✅" if condition_4_met else "❌", 3, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 3, column=1)
+
+
+def display_condition_4(quarterly_financials, right_frame_content):
+    create_label(right_frame_content, "條件 4: 淨收入成長", 3)
+    try:
+        latest_net_income = quarterly_financials.loc['Net Income'].iloc[0]
+        previous_net_income = quarterly_financials.loc['Net Income'].iloc[1]
+        if pd.notna(latest_net_income) and pd.notna(previous_net_income):
+            difference = latest_net_income - previous_net_income
+            growth_rate = (difference / previous_net_income) * 100
+            condition_4_met = growth_rate > 0
+
+            print("CONDITION 4")
+            print(latest_net_income)
+            print(previous_net_income)
+            print(growth_rate)
+        else:
+            condition_4_met = False
+        create_label(right_frame_content, "✅" if condition_4_met else "❌", 3, column=1)
+    except Exception:
+        create_label(right_frame_content, "❌", 3, column=1)
+
+
+def display_condition_5(quarterly_balance_sheet, right_frame_content):
     create_label(right_frame_content, "條件 5: 流動資產 > 流動負債", 4)
     try:
-        current_assets = stock.balance_sheet.loc["Current Assets"].iloc[0] if "Current Assets" in stock.balance_sheet.index else 0
-        current_liabilities = stock.balance_sheet.loc["Current Liabilities"].iloc[0] if "Current Liabilities" in stock.balance_sheet.index else 0
+        current_assets = quarterly_balance_sheet.loc["Current Assets"].iloc[0] if "Current Assets" in quarterly_balance_sheet.index else 0
+        current_liabilities = quarterly_balance_sheet.loc["Current Liabilities"].iloc[0] if "Current Liabilities" in quarterly_balance_sheet.index else 0
         condition_5_met = current_assets > current_liabilities
+
+        print("CONDITION 5")
+        print(current_assets)
+        print(current_liabilities)
         create_label(right_frame_content, "✅" if condition_5_met else "❌", 4, column=1)
     except Exception:
         create_label(right_frame_content, "❌", 4, column=1)
 
-    # 條件 6: 長期負債/長期淨利 < 4
-    create_label(right_frame_content, "條件 6: 長期負債 / 長期淨利 < 4", 5)
+# def display_condition_6(balance_sheet, right_frame_content, retained_earnings):
+#     create_label(right_frame_content, "條件 6: 長期負債 / 長期淨利 < 4", 5)
+#     try:
+#         long_term_debt = balance_sheet.loc["Long Term Debt"].iloc[0] if "Long Term Debt" in balance_sheet.index else None
+#         long_term_net_income = retained_earnings if retained_earnings != "N/A" else None
+#         if long_term_debt is not None and long_term_net_income is not None and long_term_net_income != 0:
+#             condition_6_met = (long_term_debt / long_term_net_income) < 4
+#         else:
+#             condition_6_met = False
+#         create_label(right_frame_content, "✅" if condition_6_met else "❌", 5, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 5, column=1)
+
+def display_condition_6(quarterly_balance_sheet, quarterly_financials, right_frame_content):
+    create_label(right_frame_content, "條件 6: 長期負債 / 淨利 < 4", 5)
     try:
-        long_term_debt = balance_sheet.loc["Long Term Debt"].iloc[0] if "Long Term Debt" in balance_sheet.index else None
-        long_term_net_income = retained_earnings if retained_earnings != "N/A" else None
-        if long_term_debt is not None and long_term_net_income is not None and long_term_net_income != 0:
-            condition_6_met = (long_term_debt / long_term_net_income) < 4
+        long_term_debt = quarterly_balance_sheet.loc["Long Term Debt"].iloc[0] if "Long Term Debt" in quarterly_balance_sheet.index else None
+        net_income = quarterly_financials.loc['Net Income'].iloc[0]
+        if long_term_debt is not None and net_income is not None and net_income != 0:
+            # print(f"Ratio: {long_term_debt / net_income}")
+
+            condition_6_met = (long_term_debt / net_income) < 4
+            print("CONDITION 6")
+            print(long_term_debt)
+            print(net_income)
+            print((long_term_debt / net_income))
         else:
             condition_6_met = False
+            print("Either long_term_debt or net_income is None or net_income is zero.")
         create_label(right_frame_content, "✅" if condition_6_met else "❌", 5, column=1)
-    except Exception:
+    except Exception as e:
+        print("An error occurred:")
+        print(str(e))
+        traceback.print_exc()  # 這行可以顯示具體的錯誤回溯信息
         create_label(right_frame_content, "❌", 5, column=1)
 
-    # 條件 7: 股東權益正成長 equity_growth_rate > 0
+
+# def display_condition_7(balance_sheet, right_frame_content):
+#     create_label(right_frame_content, "條件 7: 股東權益正成長", 6)
+#     try:
+#         stockholders_equity = balance_sheet.loc["Stockholders Equity"].iloc[0] if "Stockholders Equity" in balance_sheet.index else "N/A"
+#         previous_stockholders_equity = balance_sheet.loc["Stockholders Equity"].iloc[1] if "Stockholders Equity" in balance_sheet.index and len(balance_sheet.loc["Stockholders Equity"]) > 1 else "N/A"
+
+#         if stockholders_equity != "N/A" and previous_stockholders_equity != "N/A" and previous_stockholders_equity != 0:
+#             equity_growth_rate = ((stockholders_equity - previous_stockholders_equity) / previous_stockholders_equity) * 100
+#             condition_7_met = equity_growth_rate > 0
+#         else:
+#             condition_7_met = False
+
+#         create_label(right_frame_content, "✅" if condition_7_met else "❌", 6, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 6, column=1)
+
+def display_condition_7(quarterly_balance_sheet, right_frame_content):
     create_label(right_frame_content, "條件 7: 股東權益正成長", 6)
     try:
-        condition_7_met = equity_growth_rate != "N/A" and float(equity_growth_rate.replace('%', '')) > 0
-        create_label(right_frame_content, "✅" if condition_7_met else "❌", 6, column=1)
-    except Exception:
+        # 獲取 "Stockholders Equity" 的數據
+        if "Stockholders Equity" in quarterly_balance_sheet.index:
+            stockholders_equity = quarterly_balance_sheet.loc["Stockholders Equity"]
+
+            # 確保有至少兩個季度的數據進行比較
+            if len(stockholders_equity) >= 2:
+                current_value = stockholders_equity.iloc[0]  # 最新一季的數據
+                previous_value = stockholders_equity.iloc[1]  # 前一季的數據
+
+                if pd.notna(current_value) and pd.notna(previous_value) and previous_value != 0:
+                    difference = current_value - previous_value
+                    growth_rate = (difference / previous_value) * 100
+                    condition_7_met = growth_rate > 0  # 比率為正值表示股東權益成長
+                    print("CONDITION 7")
+                    print(current_value)
+                    print(previous_value)
+                    print(growth_rate)
+                    create_label(right_frame_content, "✅" if condition_7_met else "❌", 6, column=1)
+                else:
+                    create_label(right_frame_content, "❌", 6, column=1)
+            else:
+                create_label(right_frame_content, "❌", 6, column=1)
+        else:
+            create_label(right_frame_content, "❌", 6, column=1)
+    except Exception as e:
+        print(f"Error in display_condition_7: {e}")
         create_label(right_frame_content, "❌", 6, column=1)
 
-    # 條件 8: 流通在外股數下降
+# def display_condition_8(basic_average_shares, right_frame_content):
+#     create_label(right_frame_content, "條件 8: 流通在外股數下降", 7)
+#     try:
+#         if len(basic_average_shares) >= 2:
+#             current_value = basic_average_shares.iloc[0]
+#             previous_value = basic_average_shares.iloc[1]
+
+#             if pd.notna(current_value) and pd.notna(previous_value):
+#                 difference = current_value - previous_value
+#                 condition_8_met = difference < 0
+#                 create_label(right_frame_content, "✅" if condition_8_met else "❌", 7, column=1)
+#             else:
+#                 create_label(right_frame_content, "❌", 7, column=1)
+#         else:
+#             create_label(right_frame_content, "❌", 7, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 7, column=1)
+
+def display_condition_8(quarterly_financials, right_frame_content):
     create_label(right_frame_content, "條件 8: 流通在外股數下降", 7)
     try:
-        condition_8_met = growth_rate < 0
-        create_label(right_frame_content, "✅" if condition_8_met else "❌", 7, column=1)
-    except Exception:
+        # 獲取 "Basic Average Shares" 的數據
+        if "Basic Average Shares" in quarterly_financials.index:
+            basic_average_shares = quarterly_financials.loc["Basic Average Shares"]
+
+            # 確保有至少兩個季度的數據進行比較
+            if len(basic_average_shares) >= 2:
+                current_value = basic_average_shares.iloc[0]  # 最新一季的數據
+                previous_value = basic_average_shares.iloc[1]  # 前一季的數據
+
+                if pd.notna(current_value) and pd.notna(previous_value):
+                    difference = current_value - previous_value
+                    # growth_rate = (difference / previous_value) * 100
+                    condition_8_met = difference < 0  # 比率為負值表示流通股數下降
+
+                    print("CONDITION 8")
+                    print(current_value)
+                    print(previous_value)
+                    create_label(right_frame_content, "✅" if condition_8_met else "❌", 7, column=1)
+                else:
+                    create_label(right_frame_content, "❌", 7, column=1)
+            else:
+                create_label(right_frame_content, "❌", 7, column=1)
+        else:
+            create_label(right_frame_content, "❌", 7, column=1)
+    except Exception as e:
+        print(f"Error in display_condition_8: {e}")
         create_label(right_frame_content, "❌", 7, column=1)
 
-    # 條件 9: 營業金流 > 投資金流 && 營業金流 > 融資金流
+def display_condition_9(quarterly_cashflow, right_frame_content):
     create_label(right_frame_content, "條件 9: 營業金流 > 投資金流 && 營業金流 > 融資金流", 8)
     try:
-        operating_cash_flow = stock.cashflow.loc['Operating Cash Flow'].iloc[0] if 'Operating Cash Flow' in stock.cashflow.index else None
+        operating_cash_flow = quarterly_cashflow.loc["Operating Cash Flow"].iloc[0]
+        financing_cash_flow = quarterly_cashflow.loc["Financing Cash Flow"].iloc[0]
+        investing_cash_flow = quarterly_cashflow.loc["Investing Cash Flow"].iloc[0]
+
+        print("CONDITION 9")
+        print(operating_cash_flow)
+        print(financing_cash_flow)
+        print(investing_cash_flow)
+        
         condition_9_met = operating_cash_flow is not None and operating_cash_flow > investing_cash_flow and operating_cash_flow > financing_cash_flow
         create_label(right_frame_content, "✅" if condition_9_met else "❌", 8, column=1)
     except Exception:
         create_label(right_frame_content, "❌", 8, column=1)
 
-    # 條件 10: Growing Free Cash Flow
+# def display_condition_10(financials, right_frame_content):
+#     create_label(right_frame_content, "條件 10: 自由現金流正成長", 9)
+#     try:
+#         free_cash_flow = financials.loc['Free Cash Flow'] if 'Free Cash Flow' in financials.index else None
+#         condition_10_met = calculate_growth_rate(free_cash_flow) != "N/A" and float(calculate_growth_rate(free_cash_flow).replace('%', '')) > 0
+#         create_label(right_frame_content, "✅" if condition_10_met else "❌", 9, column=1)
+#     except Exception:
+#         create_label(right_frame_content, "❌", 9, column=1)
+
+def display_condition_10(quarterly_cashflow, right_frame_content):
     create_label(right_frame_content, "條件 10: 自由現金流正成長", 9)
     try:
-        free_cash_flow = stock.cashflow.loc['Free Cash Flow'] if 'Free Cash Flow' in stock.cashflow.index else None
-        condition_10_met = calculate_growth_rate(free_cash_flow) != "N/A" and float(calculate_growth_rate(free_cash_flow).replace('%', '')) > 0
-        create_label(right_frame_content, "✅" if condition_10_met else "❌", 9, column=1)
-    except Exception:
-        create_label(right_frame_content, "❌", 9, column=1)
+        # 獲取 "Free Cash Flow" 的數據
+        if "Free Cash Flow" in quarterly_cashflow.index:
+            free_cash_flow = quarterly_cashflow.loc["Free Cash Flow"]
 
-    # 將 balance_sheet 存成 Excel 檔案
-    try:
-        balance_sheet = stock.balance_sheet
-        balance_sheet.to_excel("./balance_sheet.xlsx")
+            # 確保有至少兩個季度的數據進行比較
+            if len(free_cash_flow) >= 2:
+                current_value = free_cash_flow.iloc[0]  # 最新一季的數據
+                previous_value = free_cash_flow.iloc[1]  # 前一季的數據
+
+                if pd.notna(current_value) and pd.notna(previous_value):
+                    difference = current_value - previous_value
+                    # growth_rate = (difference / previous_value) * 100
+
+                    print("CONDITION 10")
+                    print(current_value)
+                    print(previous_value)
+                    condition_10_met = difference > 0  # 比率為正值表示自由現金流成長
+                    create_label(right_frame_content, "✅" if condition_10_met else "❌", 9, column=1)
+                else:
+                    create_label(right_frame_content, "❌", 9, column=1)
+            else:
+                create_label(right_frame_content, "❌", 9, column=1)
+        else:
+            create_label(right_frame_content, "❌", 9, column=1)
     except Exception as e:
-        print(f"Error saving balance sheet to Excel: {e}")
+        print(f"Error in display_condition_10: {e}")
+        create_label(right_frame_content, "❌", 9, column=1)
 
 def clear_frame_content(frame):
     """清空框架內容"""
@@ -292,11 +464,6 @@ def clear_frame_content(frame):
 
 def display_basic_info(stock_info, content_frame, basic_info_fields):
     """顯示基本資訊"""
-    # create_label(content_frame, "基本資訊", 0, columnspan=2, pady=5)
-
-    # 打印出參數名稱
-    for key in stock_info.keys():
-        print(key)
     for idx, (field, eng_label, label) in enumerate(basic_info_fields, start=1):
         value = stock_info.get(field, "N/A")  # 如果字段不存在，顯示 "N/A"
         formatted_value = format_number(value)  # 格式化數字
@@ -306,7 +473,6 @@ def display_basic_info(stock_info, content_frame, basic_info_fields):
 
 def display_financial_data(stock, content_frame, financial_fields):
     """顯示財務數據"""
-    # create_label(content_frame, "財務數據", 0, columnspan=2, pady=5)
     for idx, (field, eng_label, label) in enumerate(financial_fields, start=1):
         value = stock.info.get(field, "N/A") if field not in ["netIncome", "longTermDebt", "retainedEarnings", "longTermNetIncome"] else label.split(': ')[1]  # 如果字段不存在，顯示 "N/A"
         formatted_value = format_number(value) if field not in ["netIncome", "longTermDebt", "retainedEarnings", "longTermNetIncome"] else value  # 格式化數字
