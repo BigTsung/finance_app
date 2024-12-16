@@ -16,9 +16,10 @@ input_frame.pack(anchor="w", padx=10, pady=10)
 tk.Label(input_frame, text="請輸入股票代號:").pack(side="left", padx=5)
 stock_entry = ttk.Entry(input_frame, width=20)
 stock_entry.pack(side="left", padx=5)
+stock_entry.focus()  # 設定游標一開始就聚焦在輸入框
 
 # 修改查詢按鈕的命令回調函數
-def fetch_and_print_stock_info():
+def fetch_and_print_stock_info(event=None):  # event=None 使此函數支援按鈕點擊及鍵盤事件
     stock_symbol = stock_entry.get()  # 獲取使用者輸入的股票代號
     print("===================================================")
     print("股票代號：", stock_symbol)
@@ -28,9 +29,12 @@ def fetch_and_print_stock_info():
     # 更新 left_frame_content_1 裡的字體大小
     update_font_size(stock_info_frame, size=8)
 
-# 修改查詢按鈕的設置
+# 查詢按鈕設置
 search_button = ttk.Button(input_frame, text="查詢", command=fetch_and_print_stock_info)
 search_button.pack(side="left", padx=5)
+
+# 綁定 Enter 鍵至查詢按鈕
+stock_entry.bind("<Return>", fetch_and_print_stock_info)
 
 # 下方區域框架，包含所有子區塊
 main_frame = tk.Frame(window)
