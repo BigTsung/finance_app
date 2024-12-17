@@ -29,6 +29,7 @@ def fetch_stock_info(stock_entry, left_frame_content_1, ten_punch_content):
     cash_flow = stock.cashflow
     quarterly_cashflow = stock.quarterly_cashflow
 
+    print(stock_info)
 
     # pd.set_option('display.max_rows', None)
     # pd.set_option('display.max_columns', None)
@@ -375,27 +376,38 @@ def fetch_stock_info(stock_entry, left_frame_content_1, ten_punch_content):
     display_condition_9(cash_flow, ten_punch_content)
     display_condition_10(quarterly_cashflow, ten_punch_content)
 
-def display_condition_1(stock_info, right_frame_content):
+def display_condition_1(stock_info, right_frame_content, PE_THRESHOLD=25, PEG_THRESHOLD=1.0):
     create_label(right_frame_content, f"條件 1: P/E < {PE_THRESHOLD} || PEG < {PEG_THRESHOLD}", 0)
-    
+
     try:
+        # 取得 trailingPE 和 trailingPegRatio
         trailing_pe = stock_info.get('trailingPE')
         peg_ratio = stock_info.get('trailingPegRatio')
 
-        # 檢查 trailing_pe 和 peg_ratio 是否為有效的浮點數
-        if trailing_pe is not None and peg_ratio is not None:
-            condition_1_met = (trailing_pe < PE_THRESHOLD) or (peg_ratio < PEG_THRESHOLD)
-        elif trailing_pe is not None:
-            condition_1_met = trailing_pe < PE_THRESHOLD
-        elif peg_ratio is not None:
-            condition_1_met = peg_ratio < PEG_THRESHOLD
-        else:
-            condition_1_met = False
+        print("CONDITION 1:", trailing_pe, peg_ratio)
 
-        create_label(right_frame_content, "✅" if condition_1_met else "❌", 0, column=1)
+        # 檢查是否有數值，如果沒有數值則顯示警告
+        if trailing_pe is None and peg_ratio is None:
+            create_label(right_frame_content, "⚠️ P/E 和 PEG 無法取得", 0, column=1)
+            return
+        elif trailing_pe is None:
+            create_label(right_frame_content, "⚠️ P/E 無法取得", 0, column=1)
+            return
+        elif peg_ratio is None:
+            create_label(right_frame_content, "⚠️ PEG 無法取得", 0, column=1)
+            return
+
+        # 條件判斷：P/E < 閾值 或 PEG < 閾值
+        condition_1_met = (trailing_pe < PE_THRESHOLD) or (peg_ratio < PEG_THRESHOLD)
+
+        # 顯示結果
+        create_label(right_frame_content, 
+                     f"{'✅' if condition_1_met else '❌'} P/E: {trailing_pe} PEG: {peg_ratio}", 
+                     0, column=1)
+
     except Exception as e:
         print(f"Error in display_condition_1: {e}")
-        create_label(right_frame_content, "❌", 0, column=1)
+        create_label(right_frame_content, "⚠️ Error 發生", 0, column=1)
 
 
 def display_condition_2(annual_financials, quarterly_financials, right_frame_content):
@@ -476,173 +488,197 @@ def display_condition_2(annual_financials, quarterly_financials, right_frame_con
         print(f"Error in display_condition_2: {e}")
         create_label(right_frame_content, "❌", 1, column=1)
 
-def display_condition_3(financials, quarterly_financials, right_frame_content):
-    create_label(right_frame_content, "條件 3: 營收利潤正成長(包括 TTM)", 2)
+def display_condition_3(financials, quarterly_financials, right_frame_content, growth_threshold=0.3):
+    create_label(right_frame_content, "條件 3: 營運收入成長 (Annual + TTM)", 2)
 
     try:
         # 初始化空列表，用於存放年份和營運收入
         operating_incomes = []
         years = []
 
-        # 優先考慮 TTM
+        # 取得最新 3 年的年度數據
+        if 'Operating Income' in financials.index:
+            annual_operating_incomes = financials.loc['Operating Income'].dropna()
+            if len(annual_operating_incomes) >= 3:
+                latest_annual_data = annual_operating_incomes.iloc[:3]  # 取最新 3 年數據
+                operating_incomes.extend(latest_annual_data.tolist()[::-1])  # 倒序
+                years.extend(latest_annual_data.index.tolist()[::-1])  # 年份倒序
+
+        # 計算 TTM 營運收入
         if 'Operating Income' in quarterly_financials.index and len(quarterly_financials.loc['Operating Income']) >= 4:
-            # 計算 TTM 營運收入
             operating_income_ttm = quarterly_financials.loc['Operating Income'].iloc[:4].sum()
-            print(f"TTM 營運收入計算成功: {operating_income_ttm}")
+            print(f"TTM 營運收入: {operating_income_ttm}")
             operating_incomes.append(operating_income_ttm)
             years.append("TTM")
 
-        # 加入所有年度數據
-        if 'Operating Income' in financials.index:
-            annual_operating_incomes = financials.loc['Operating Income'].tolist()
-            annual_years = financials.columns.tolist()
-            operating_incomes.extend(annual_operating_incomes)
-            years.extend(annual_years)
-
-        # 如果無可用數據，返回警告
-        if not operating_incomes:
-            print("無法找到可用的 Operating Income 數據")
-            create_label(right_frame_content, "⚠️ 無可用數據", 2, column=1)
-            return
-
-        # 清理數據：移除 nan 或 inf
-        operating_incomes = np.array(operating_incomes, dtype=float)
-        years = np.array(years)
-        valid_indices = np.isfinite(operating_incomes)  # 找出合法數據
-        operating_incomes = operating_incomes[valid_indices]
-        years = years[valid_indices]
-
-        # 確保數據長度足夠
-        if len(operating_incomes) < 2:
-            print("有效數據不足，無法計算趨勢")
+        # 確保數據完整（必須有 3 年年度數據 + TTM）
+        if len(operating_incomes) != 4:
+            print("有效數據不足，無法進行分析")
             create_label(right_frame_content, "⚠️ 數據不足", 2, column=1)
             return
 
-        # 將數據從過去到現在排列
-        operating_incomes = operating_incomes[::-1]
-        years = years[::-1]
-
-        # 打印取得的年份和數據
+        # 打印數據以供檢查
         print("取得的年份:", years)
         print("取得的營運收入資料:", operating_incomes)
 
-        # 使用二次回歸檢測整體趨勢
-        x = np.arange(len(operating_incomes), dtype=float)
-        coefficients = np.polyfit(x, operating_incomes, 2)  # 二次多項式擬合
-        trend = np.poly1d(coefficients)                     # 生成擬合函數
+        # Step 1: 使用線性回歸檢查整體斜率
+        x = np.arange(len(operating_incomes))
+        slope, intercept, _, _, _ = linregress(x, operating_incomes)
+        print(f"斜率: {slope:.6f}")
 
-        # 計算整體趨勢（使用一階導數的平均值）
-        first_derivative = np.polyder(trend, 1)
-        avg_slope = np.mean(first_derivative(x))
+        condition_3_met = False  # 預設未成長
+        ttm_growth_message = ""
 
-        # 打印二次回歸結果
-        print(f"二次回歸係數: {coefficients}")
-        print(f"平均一階導數: {avg_slope:.6f}")
+        if slope > 0:
+            # 如果斜率向上，判定成長
+            condition_3_met = True
+            print("✅ 整體斜率向上，營運收入呈現成長")
+        else:
+            # Step 2: 如果斜率不向上，檢查 TTM 是否高於最新年度數據的 30%
+            ttm_value = operating_incomes[3]  # TTM 值
+            latest_annual_value = operating_incomes[2]  # 最新年度數據
+            print("anson", ttm_value, latest_annual_value, growth_threshold)
+            if ttm_value > latest_annual_value * (1 + growth_threshold):
+                condition_3_met = True
+                ttm_growth_message = f"TTM 明顯成長 (> {growth_threshold * 100:.0f}%)"
+                print(f"✅ TTM 高於最新年度 30%: {ttm_value} > {latest_annual_value * 1.3}")
+            else:
+                print("❌ TTM 未達到明顯成長標準")
 
-        # 判斷整體趨勢是否攀升
-        condition_3_met = avg_slope > 0
+        # # 視覺化結果
+        # plt.figure(figsize=(8, 5))
+        # plt.plot(x, operating_incomes, 'o-', label='Operating Income')  # 原始數據連線
+        
+        # # 顯示每個數據點的數值
+        # for i, value in enumerate(operating_incomes):
+        #     plt.text(x[i], value, f"{value:,.0f}", ha='center', va='bottom', fontsize=8)
+
+        # plt.xticks(x, years, rotation=45)  # x 軸標籤
+        # plt.title("Operating Income Trend (3 Years + TTM)")
+        # plt.xlabel("Time Series")
+        # plt.ylabel("Operating Income (Unit)")
+        # plt.legend()
+        # plt.grid(True)
+
+        # # 保存圖片
+        # output_file = "./operating_income_trend_ttm.png"
+        # plt.tight_layout()
+        # plt.savefig(output_file)
+        # print(f"Plot saved as {output_file}")
 
         # 顯示結果
         if condition_3_met:
-            create_label(right_frame_content, f"✅ ({years[0]}~{years[-1]})", 2, column=1)
-            print(f"✅ 營運收入整體趨勢攀升 ({years[0]}~{years[-1]})")
+            result_text = f"✅ {f'({ttm_growth_message})' if ttm_growth_message else ''}"
+            create_label(right_frame_content, result_text, 2, column=1)
         else:
             create_label(right_frame_content, "❌", 2, column=1)
-            print(f"❌ 營運收入整體趨勢未攀升 ({years[0]}~{years[-1]})")
 
     except Exception as e:
         print(f"Error in display_condition_3: {e}")
-        create_label(right_frame_content, "⚠️", 2, column=1)
+        create_label(right_frame_content, "⚠️ Error", 2, column=1)
 
-def display_condition_4(financials, quarterly_financials, right_frame_content):
-    create_label(right_frame_content, "條件 4: 淨利正成長(包括 TTM)", 3)
+def display_condition_4(financials, quarterly_financials, right_frame_content, growth_threshold=0.3):
+    create_label(right_frame_content, "條件 4: 淨利正成長 (2 Years + TTM)", 3)
 
     try:
         # 初始化空列表，用於存放年份和淨利
         net_incomes = []
         years = []
 
-        # 優先考慮 TTM
+        # 取得最新 3 年的年度數據
+        if 'Net Income' in financials.index:
+            annual_net_incomes = financials.loc['Net Income'].dropna()
+            if len(annual_net_incomes) >= 3:
+                latest_annual_data = annual_net_incomes.iloc[:3]  # 取最新 3 年數據
+                net_incomes.extend(latest_annual_data.tolist()[::-1])  # 倒序
+                years.extend(latest_annual_data.index.tolist()[::-1])  # 年份倒序
+
+        # 計算 TTM 淨利並加入最後
         if 'Net Income' in quarterly_financials.index and len(quarterly_financials.loc['Net Income']) >= 4:
-            # 計算 TTM 淨利
             net_income_ttm = quarterly_financials.loc['Net Income'].iloc[:4].sum()
-            print(f"TTM 淨利計算成功: {net_income_ttm}")
+            print(f"TTM 淨利: {net_income_ttm}")
             net_incomes.append(net_income_ttm)
             years.append("TTM")
 
-        # 加入所有年度數據
-        if 'Net Income' in financials.index:
-            annual_net_incomes = financials.loc['Net Income'].tolist()
-            annual_years = financials.columns.tolist()
-            net_incomes.extend(annual_net_incomes)
-            years.extend(annual_years)
-
-        # 如果無可用數據，返回警告
-        if not net_incomes:
-            print("無法找到可用的 Net Income 數據")
-            create_label(right_frame_content, "⚠️ 無可用數據", 3, column=1)
+        # 確保數據完整（必須有 3 個數據: 2 年年度數據 + TTM）
+        if len(net_incomes) != 4:
+            print("有效數據不足，無法進行分析")
+            create_label(right_frame_content, "⚠️ 數據不足", 4, column=1)
             return
 
-        # 清理數據：移除 nan 或 inf
-        net_incomes = np.array(net_incomes, dtype=float)
-        years = np.array(years)
-        valid_indices = np.isfinite(net_incomes)  # 找出合法數據
-        net_incomes = net_incomes[valid_indices]
-        years = years[valid_indices]
-
-        # 確保數據長度足夠
-        if len(net_incomes) < 2:
-            print("有效數據不足，無法計算趨勢")
-            create_label(right_frame_content, "⚠️ 數據不足", 3, column=1)
-            return
-
-        # 將數據從過去到現在排列
-        net_incomes = net_incomes[::-1]
-        years = years[::-1]
-
-        # 打印取得的年份和數據
+        # 打印數據以供檢查
         print("取得的年份:", years)
         print("取得的淨利資料:", net_incomes)
 
-        # 使用二次回歸檢測整體趨勢
-        x = np.arange(len(net_incomes), dtype=float)
-        coefficients = np.polyfit(x, net_incomes, 2)  # 二次多項式擬合
-        trend = np.poly1d(coefficients)              # 生成擬合函數
+        # Step 1: 使用線性回歸檢查整體斜率
+        x = np.arange(len(net_incomes))
+        slope, intercept, _, _, _ = linregress(x, net_incomes)
+        print(f"斜率: {slope:.6f}")
 
-        # 計算整體趨勢（使用一階導數的平均值）
-        first_derivative = np.polyder(trend, 1)
-        avg_slope = np.mean(first_derivative(x))
+        condition_4_met = False  # 預設未成長
+        ttm_growth_message = ""
 
-        # 打印二次回歸結果
-        print(f"二次回歸係數: {coefficients}")
-        print(f"平均一階導數: {avg_slope:.6f}")
+        if slope > 0:
+            # 如果斜率向上，判定成長
+            condition_4_met = True
+            print("✅ 整體斜率向上，淨利呈現成長")
+        else:
+            # Step 2: 如果斜率不向上，檢查 TTM 是否高於最新年度數據的 30%
+            ttm_value = net_incomes[3]  # TTM 值
+            latest_annual_value = net_incomes[2]  # 最新年度數據
+            print("anson", ttm_value, latest_annual_value, growth_threshold)
+            if ttm_value > latest_annual_value * (1 + growth_threshold):
+                condition_4_met = True
+                ttm_growth_message = f"TTM 明顯成長 (> {growth_threshold * 100:.0f}%)"
+                print(f"✅ TTM 高於最新年度 30%: {ttm_value} > {latest_annual_value * 1.3}")
+            else:
+                print("❌ TTM 未達到明顯成長標準")
 
-        # 判斷整體趨勢是否攀升
-        condition_4_met = avg_slope > 0
+        # # 視覺化結果
+        # plt.figure(figsize=(8, 5))
+        # plt.plot(x, net_incomes, 'o-', label='Net Income')  # 原始數據連線
+
+        # # 顯示每個數據點的數值
+        # for i, value in enumerate(net_incomes):
+        #     plt.text(x[i], value, f"{value:,.0f}", ha='center', va='bottom', fontsize=8)
+
+        # plt.xticks(x, years, rotation=45)  # x 軸標籤
+        # plt.title("Net Income Trend (2 Years + TTM)")
+        # plt.xlabel("Time Series")
+        # plt.ylabel("Net Income (Unit)")
+        # plt.legend()
+        # plt.grid(True)
+
+        # # 保存圖片
+        # output_file = "./net_income_trend_ttm.png"
+        # plt.tight_layout()
+        # plt.savefig(output_file)
+        # print(f"Plot saved as {output_file}")
 
         # 顯示結果
         if condition_4_met:
-            create_label(right_frame_content, f"✅ ({years[0]}~{years[-1]})", 3, column=1)
-            print(f"✅ 淨利整體趨勢攀升 ({years[0]}~{years[-1]})")
+            result_text = f"✅ {f'({ttm_growth_message})' if ttm_growth_message else ''}"
+            create_label(right_frame_content, result_text, 3, column=1)
         else:
-            create_label(right_frame_content, "❌", 3, column=1)
-            print(f"❌ 淨利整體趨勢未攀升 ({years[0]}~{years[-1]})")
+            create_label(right_frame_content, "❌ ", 3, column=1)
 
     except Exception as e:
         print(f"Error in display_condition_4: {e}")
-        create_label(right_frame_content, "⚠️", 3, column=1)
+        create_label(right_frame_content, "⚠️ Error", 3, column=1)
 
 def display_condition_5(quarterly_balance_sheet, right_frame_content):
     create_label(right_frame_content, "條件 5: 流動資產 TTM > 流動負債 TTM", 4)
     try:
         # 檢查是否可以取得流動資產和流動負債的數據
-        if "Total Assets" not in quarterly_balance_sheet.index or "Total Liabilities Net Minority Interest" not in quarterly_balance_sheet.index:
-            create_label(right_frame_content, "⚠️", 4, column=1)
+        if "Current Assets" not in quarterly_balance_sheet.index or "Current Liabilities" not in quarterly_balance_sheet.index:
+            create_label(right_frame_content, "⚠️ 數據不足", 4, column=1)
             return
 
         # 獲取最近四個季度的流動資產和流動負債數據
-        current_assets_series = quarterly_balance_sheet.loc["Total Assets"].iloc[:4]
-        current_liabilities_series = quarterly_balance_sheet.loc["Total Liabilities Net Minority Interest"].iloc[:4]
+        current_assets_series = quarterly_balance_sheet.loc["Current Assets"].iloc[:4]
+        current_liabilities_series = quarterly_balance_sheet.loc["Current Liabilities"].iloc[:4]
+
+        print("CONDITION_5", current_assets_series, current_liabilities_series)
 
         # 將 NaN 值填充為 0
         current_assets_series = current_assets_series
@@ -656,7 +692,7 @@ def display_condition_5(quarterly_balance_sheet, right_frame_content):
         if pd.notna(current_assets_ttm) and pd.notna(current_liabilities_ttm):
             condition_5_met = current_assets_ttm > current_liabilities_ttm
         else:
-            create_label(right_frame_content, "⚠️", 4, column=1)
+            create_label(right_frame_content, "⚠️ 數據不足", 4, column=1)
             return
 
         # 顯示結果
@@ -668,7 +704,7 @@ def display_condition_5(quarterly_balance_sheet, right_frame_content):
         print("Current Liabilities TTM:", current_liabilities_ttm)
     except Exception as e:
         print(f"Error in display_condition_5: {e}")
-        create_label(right_frame_content, "⚠️", 4, column=1)
+        create_label(right_frame_content, "⚠️ 數據不足", 4, column=1)
 
 def display_condition_6(quarterly_balance_sheet, quarterly_financials, right_frame_content):
     create_label(right_frame_content, "條件 6: 長期負債/淨利 < 4", 5)
@@ -730,7 +766,7 @@ def display_condition_7(annual_balance_sheet, quarterly_balance_sheet, right_fra
 
             # 確保至少有 4 季數據
             if len(stockholders_equity_quarterly) >= 4:
-                ttm_value = stockholders_equity_quarterly.iloc[:4].sum()/4.0  # 最近 4 季加總
+                ttm_value = stockholders_equity_quarterly.iloc[:4].sum()  # 最近 4 季加總
                 equity_values.append(ttm_value)
                 x_values.append("TTM")  # 標記為 TTM
 
