@@ -1,18 +1,10 @@
-certifi==2024.6.2
-charset-normalizer==3.3.2
-idna==3.7
-lxml==5.2.2
-numpy==2.0.0
-pandas==2.2.2
-PyQt5==5.15.10
-PyQt5-Qt5==5.15.14
-PyQt5-sip==12.13.0
-PyQtChart==5.15.6
-PyQtChart-Qt5==5.15.14
-python-dateutil==2.9.0.post0
-pytz==2024.1
-requests==2.32.3
-six==1.16.0
-twstock==1.4.0
-tzdata==2024.1
-urllib3==2.2.1
+# Direct dependencies of scripts/finance_app.py only.
+# Transitive packages (urllib3, certifi, idna, ...) are resolved by pip --
+# do not re-add them from `pip freeze`.
+beautifulsoup4>=4.12.3
+pandas>=2.2.3
+PyQt5>=5.15.10
+PyQtChart>=5.15.6
+requests>=2.32.4
+twstock>=1.4.0
+yfinance>=0.2.50
